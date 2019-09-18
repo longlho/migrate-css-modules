@@ -1,25 +1,23 @@
-import * as ts from 'typescript'
-function visitor(
-    ctx: ts.TransformationContext,
-    sf: ts.SourceFile,
-    allClassNames: Record<string, string>
-  ) {
-    const visitor: ts.Visitor = (node: ts.Node): ts.Node => {
-      let newNode: ts.Node;
-      let cssPath: string;
-      if (ts.isStringLiteral(node) && node.getText(sf) in allClassNames) {
-        
-      }
-      return ts.visitEachChild(node, visitor, ctx);
-    };
-  
-    return visitor;
-  }
 
-  
-export default function(allClassNames: Record<string, string>) {
-    return (ctx: ts.TransformationContext): ts.Transformer<ts.SourceFile> => {
-      return (sf: ts.SourceFile) =>
-        ts.visitNode(sf, visitor(ctx, sf, allClassNames));
-    };
+import {FileInfo, API, StringLiteral, ImportDeclaration} from 'jscodeshift'
+const foo = {
+    'mc-bar-1': 'asd'
+}
+
+/**
+ * This replaces every occurrence of variable "foo".
+ */
+module.exports = function(fileInfo: FileInfo, {j, jscodeshift}: API) {
+    const nodes = jscodeshift(fileInfo.source)
+    const importNodes = []
+    nodes.find(StringLiteral)
+        .filter(path => path.value.value === 'mc-bar-1') 
+      .forEach(path => importNodes.push(j.importDeclaration(
+          [j.importNamespaceSpecifier(j.identifier('foo'))],
+          j.literal(`${foo[path.value.value]}.css`),
+      )))
+      .replaceWith(j.memberExpression(j.identifier('foo'), j.literal('mc-bar-1')))
+      nodes.find(ImportDeclaration).insertBefore(importNodes)
+    return nodes.toSource();
   }
+  module.exports.parser = 'tsx'
